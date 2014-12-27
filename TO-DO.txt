@@ -3,18 +3,23 @@ TO-DO:
 Priority 1:
 
 [DONE] 1. Fix buggy click detection code
-2. Add variable data output for each trial
+[DONE] 2. Add variable data output for each trial
 [DONE] 3. Add more trials to stimList in generateListOfAllStims
 [DONE] 4. Add exception handling for closing data file
 [DONE] 5. Comment code for readability
 [DONE] 6. Add functionality for program termination during ITI
-[DONE] 7. Figure ot what termDur and stimDur should be in main()
-8. Test code on operant boxes
+[DONE] 7. Figure out what termDur and stimDur should be in main()
+[DONE] 8. Test code on operant boxes
+[DONE] 9. Make termDur, stimDur, and timeoutPeriod all CONST.
+10. Add functionality for program to be run without opening PsychoPy
+11. Fix readPort code to give an immediate response.
 
 Priority 2:
 
 1. Add data input functionality for running birds without using a gui
 2. Add email notifications for when birds are run
 3. Make data files save to the lab server, and to the current directory if not available
+4. Make apparatusPresent depend on read from GamePort
+5. Make ResearchAssistant default to "unlisted"
 
 NOTE: Are the training phases done by timer, or stimulus count?
