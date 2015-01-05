@@ -36,10 +36,6 @@ CHOICE_Y = (screen_width/16)
 # FIX: Check this value
 TERM_DUR = 5
 
-# duration stimulus stays on screen
-# test to make sure this is the actual duration
-STIM_DUR = 10
-
 # Time (in seconds) the hopper will stay up if the beam is not broken.
 TIMEOUT_PERIOD = 10
 
@@ -339,34 +335,32 @@ def setup():
 
     if condition == "Autoshaping (FR1)" or condition == "Operant Training (FR1)" or condition == "Operant Training (FR3)" or condition == "Operant Training (FR5)":
 
-       writer.writerow(["Research Assistant", "Subject Number", "Set Number",
-                      "Session Number", "Date Started", "Contingency",
-                      "Condition", "Pecks to Reward", "Program Name", "Trial Number",
-                      "Program Load Time", "Bird In Box Time", "Start Time", 
-                      "Experiment End Time", "Apparatus Present",
-                      "Timeout Period", "Reward Duration", "Stimulus Presented", 
-                      "Stimulus Side", "Reaction Times", "Peck Num", 
+       writer.writerow(["ResearchAssistant", "SubjectNumber", "SetNumber",
+                      "SessionNumber", "DateStarted", "Contingency",
+                      "Condition", "PeckstoReward", "ProgramName", "TrialNumber",
+                      "ProgramLoadTime", "BirdInBoxTime", "StartTime", 
+                      "ExperimentEndTime", "ApparatusPresent",
+                      "TimeoutPeriod", "RewardDuration", "StimulusPresented", 
+                      "StimulusSide", "ReactionTimes", "PeckNum", 
                       "ITI"])
 
     else:
-        writer.writerow(['Research Assistant', 'Subject Number', 'Set Number', 
-                         'Session Number', 'Date and Time Run', 'Contingency', 
-                         'Condition', 'Number of Pecks Required', 'Program Name', 
-                         'Trial Number', 'Program Load Time', 'Bird In Box Time', 
-                         'Experiment Start Time', 'Experiment End Time', 
-                         'Apparatus Present', 'Timeout Period', 'Reward Time', 
-                         'Choice Stimulus', 'Initial-Link', 'Terminal-Link', 
-                         'Choice Stimulus Side Pecked', 'Initial-Link Side Pecked', 
-                         'Choice Stimulus Pecked',
-                         'Choice Stimulus Reaction Time', 'Initial-Link Reaction Time', 
-                         'Terminal-Link Peck Log', 'Terminal Link Latency', 
-                         'Terminal Link Final Response', 'Terminal Link Duration', 
-                         'Inter-Trial Interval (ITI)', 
-                         'Choice Stimulus Screen Peck Count', 
-                         'Initial Link Screen Peck Count', 
-                         'Terminal-Link Screen Peck Count', 'Sub-Optimal Link Chosen'])
-
-    writer.writerow([])
+        writer.writerow(['ResearchAssistant', 'SubjectNumber', 'SetNumber', 
+                         'SessionNumber', 'DateandTimeRun', 'Contingency', 
+                         'Condition', 'NumberofPecksRequired', 'ProgramName', 
+                         'TrialNumber', 'ProgramLoadTime', 'BirdInBoxTime', 
+                         'ExperimentStartTime', 'ExperimentEndTime', 
+                         'ApparatusPresent', 'TimeoutPeriod', 'RewardTime', 
+                         'ChoiceStimulus', 'Initial-Link', 'Terminal-Link', 
+                         'ChoiceStimulusSidePecked', 'Initial-LinkSidePecked', 
+                         'ChoiceStimulusPecked',
+                         'ChoiceStimulusReactionTime', 'Initial-LinkReactionTime', 
+                         'Terminal-LinkPeckLog', 'TerminalLinkLatency', 
+                         'Terminal-LinkFinalResponse', 'Terminal-LinkDuration', 
+                         'Inter-TrialInterval(ITI)', 
+                         'ChoiceStimulusScreenPeckCount', 
+                         'InitialLinkScreenPeckCount', 
+                         'Terminal-LinkScreenPeckCount', 'Sub-OptimalLinkChosen'])
 
 # Creates all stimuli required, and sets them as global values
 def createStimuli():
@@ -599,7 +593,7 @@ def drawStims(stimuli):
 # Waits for input on any object provided in "Stimuli"
 # Returns after "targetPeckRequired" number of clicks on
 # stimuli is reached.
-def waitForClicks(targetPeckRequired, stimuli):
+def waitForClicks(targetPeckRequired, stimuli, duration):
 
     print("Waiting for clicks...")
     peckNum = 0
@@ -610,7 +604,7 @@ def waitForClicks(targetPeckRequired, stimuli):
     targetFlag = False
     reactionTimes = []
     reactionTimer = core.Clock()
-    stimTimer = core.CountdownTimer(STIM_DUR)
+    stimTimer = core.CountdownTimer(duration)
     
     while ((stimTimer.getTime() > 0) and (targetFlag == False)):
       #event.clearEvents('mouse')
@@ -680,56 +674,62 @@ def displayEndScreen():
 def giveReward(probability):
   global fiftyFifty, fiftyFiftyIndex, rolledFiftyFiftyBefore
   hopperDropped = ""
-
-  if probability == 1:
-    print("Reward given with probability of: ", probability)
-    hopperDropped = dropHoppersAtRandom()
-
-  elif probability == 0.5:
-    if not rolledFiftyFiftyBefore:
-      fiftyFifty = [0,0,0,0,0,0,0,0,0,0,
-                    0,0,0,0,0,0,0,0,0,0,
-                    1,1,1,1,1,1,1,1,1,1,
-                    1,1,1,1,1,1,1,1,1,1]
-
-      random.shuffle(fiftyFifty)
-      rolledFiftyFiftyBefore = True
-      fiftyFiftyIndex = -1
-    
-    fiftyFiftyIndex += 1
-    if fiftyFifty[fiftyFiftyIndex] == 1:
-      hopperDropped = dropHoppersAtRandom()
+  if apparatusPresent:
+    if probability == 1:
       print("Reward given with probability of: ", probability)
-  else:
-    print("Reward not given")
-    # In place of 1 second of hopper access
-    core.wait(1)
+      hopperDropped = dropHoppersAtRandom()
 
-  if probability > 0:
+    elif probability == 0.5:
+      if not rolledFiftyFiftyBefore:
+        fiftyFifty = [0,0,0,0,0,0,0,0,0,0,
+                      0,0,0,0,0,0,0,0,0,0,
+                      1,1,1,1,1,1,1,1,1,1,
+                      1,1,1,1,1,1,1,1,1,1]
 
-    hopperTimer = core.CountdownTimer(TIMEOUT_PERIOD)
-    # Read IR beam
-    ## FIX: Make this depend on either a timer or the bird eating.
-    # TIMEOUT_PERIOD should be the time for this timer.
-    if hopperDropped == "L":
-
-      while (hopperTimer.getTime() > 0):
-        if readLeftHopperBeam() == 0:
-          break
+        random.shuffle(fiftyFifty)
+        rolledFiftyFiftyBefore = True
+        fiftyFiftyIndex = -1
       
-      ## 1 second of hopper access
-      core.wait(1)
-      raiseLeftHopper()
-
+      fiftyFiftyIndex += 1
+      if fiftyFifty[fiftyFiftyIndex] == 1:
+        hopperDropped = dropHoppersAtRandom()
+        print("Reward given with probability of: ", probability)
     else:
-    # Assume right hopper was dropped
-      while (hopperTimer.getTime() > 0):
-        if readRightHopperBeam() == 0:
-          break
-
-      ## 1 second of hopper access
+      print("Reward not given")
+      # In place of 1 second of hopper access
       core.wait(1)
-      raiseRightHopper()
+
+    if probability > 0:
+
+      hopperTimer = core.CountdownTimer(TIMEOUT_PERIOD)
+      # Read IR beam
+
+      if hopperDropped == "L":
+
+        while (hopperTimer.getTime() > 0):
+          core.wait(0.1)
+          irValue = readLeftHopperBeam()
+          if irValue == 0:
+              break
+        
+        ## 1 second of hopper access
+        core.wait(1)
+        dropLeftHopper()
+
+      else:
+      # Assume right hopper was dropped
+        while (hopperTimer.getTime() > 0):
+          core.wait(0.1)
+          irValue = readRightHopperBeam()
+          if irValue == 0:  
+              break
+
+        ## 1 second of hopper access
+        core.wait(1)
+        dropRightHopper()
+ 
+  else:
+    print("Apparatus not present")
 
 # Randomly chooses a hopper to drop.
 # Call this function when it doesn't matter which hopper is dropped
@@ -737,10 +737,10 @@ def dropHoppersAtRandom():
   chanceArray = [0,1]
   random.shuffle(chanceArray)
   if chanceArray[0] == 1:
-    dropLeftHopper()
+    raiseLeftHopper()
     hopperDropped = "L"
   else:
-    dropRightHopper()
+    raiseRightHopper()
     hopperDropped = "R"
 
   print("Hopper dropped: ", hopperDropped)
@@ -749,8 +749,8 @@ def dropHoppersAtRandom():
 # Raises the hopper and turns the light on.
 def raiseLeftHopper():
   global portValue
-  portValue = portValue or 0x0010
-  portValue = portValue or 0x0004
+  portValue = portValue | (0x0010)
+  portValue = portValue | (0x0004)
 
   parallelPort.setData(portValue)
 
@@ -764,8 +764,8 @@ def dropLeftHopper():
 
 def raiseRightHopper():
   global portValue
-  portValue = portValue or 0x0020
-  portValue = portValue or 0x0008
+  portValue = portValue | (0x0020)
+  portValue = portValue | (0x0008)
 
   parallelPort.setData(portValue)
 
@@ -778,7 +778,7 @@ def dropRightHopper():
 
 def turnOnHouseLight():
   global portValue
-  portValue = portValue or 0x0001
+  portValue = portValue | (0x0001)
 
   parallelPort.setData(portValue)
 
@@ -790,13 +790,13 @@ def turnOffHouseLight():
 
 def turnOnFan():
   global portValue
-  portValue = portValue or 0x0002
+  portValue = portValue | (0x0002)
 
   parallelPort.setData(portValue)
 
 def turnOffFan():
   global portValue
-  portValue = portValue & ~ (0x0002)
+  portValue = portValue & ~(0x0002)
 
   parallelPort.setData(portValue)
 
@@ -804,24 +804,29 @@ def turnOffFan():
 def readLeftHopperBeam():
   #return if beam broken
 
-  if testRunFlag == "Yes":
-    value = 0
-  else:
-    value = 0
-    #value = readPort.readPort(0x0201) & 0x10
+  value = readPort.readPort(0x0201) & (0x20)
+  print("LEFT IR: ", value)
   return value
 
 # Reads from right IR beam. Called after hopper is dropped
 def readRightHopperBeam():
   #return if beam broken
-  if testRunFlag == "Yes":
-    core.wait(0.5)
-    value = 0
-  else:
-    core.wait(0.5)
-    value = 0
-    #value = readPort.readPort(0x0201) & 0x20
+  
+  value = readPort.readPort(0x0201) & (0x10)
+  print("RIGHT IR: ", value)
   return value
+
+#Reads IR beam status on port 0x0201 (GamePort)
+def checkForApparatus():
+  #return True if apparatus present, False otherwise
+
+  print("Checking for apparatus")
+  value = readPort.readPort(0x0201)
+  print("Apparatus value ", value)
+  if value == 0x00ff:
+    return True
+  else:
+    return False
 
 def waitForTermLinks():
 
@@ -878,42 +883,46 @@ def doExperimentalPhase():
         if (expTimer.getTime() <= 0):
           break
         drawStims(stimList[i])
-        cStimPecked, cClickFlag, cPeckNum, cReactionTimes = waitForClicks(1, stimList[i])
+        cStimPecked, cClickFlag, cPeckNum, cReactionTimes = waitForClicks(1, stimList[i], EXPERIMENT_TIME)
         if cClickFlag == True:
           drawStims(cStimPecked.initStims)
-          iStimPecked, iClickFlag, iPeckNum, iReactionTimes = waitForClicks(1, cStimPecked.initStims)
+          iStimPecked, iClickFlag, iPeckNum, iReactionTimes = waitForClicks(1, cStimPecked.initStims, EXPERIMENT_TIME)
           if iClickFlag == True:
             termStimShown = iStimPecked.drawTermLinks()
             win.flip()
 
             tPeckNum, tReactionTimes = waitForTermLinks()
             #core.wait(TERM_DUR)
+
+            drawStims(listOfBlanks) #Display blank stimuli for duration of ITI
             
             giveReward(termStimShown.chanceOfReinforcement)
 
-            drawStims(listOfBlanks) #Display blank stimuli for duration of ITI
-            ## FIX: Add data output. Side pecked will be cStimPecked, iStimPecked .get_x == L_X or R_X
           
         cStimSide = ""
         iStimSide = ""
-        if cStimPecked.get_x() == L_X:
-          cStimSide = "LEFT"
-        elif cStimPecked.get_x() == R_X:
-          cStimSide = "RIGHT"
-        elif cStimPecked.get_x() == 0:
-          cStimSide = "CENTRE"
+        if cPeckNum == True:
+          if cStimPecked.get_x() == L_X:
+            cStimSide = "LEFT"
+          elif cStimPecked.get_x() == R_X:
+            cStimSide = "RIGHT"
+          elif cStimPecked.get_x() == 0:
+            cStimSide = "CENTRE"
+        else:
+          cStimSide = "NO STIM PECKED"
 
-        if iStimPecked.get_x() == L_X:
-          iStimSide = "LEFT"
-        elif iStimPecked.get_x() == R_X:
-          iStimSide = "RIGHT"
-        elif iStimPecked.get_x() == 0:
-          iStimSide = "CENTRE"
+        if iPeckNum == True:
+          if iStimPecked.get_x() == L_X:
+            iStimSide = "LEFT"
+          elif iStimPecked.get_x() == R_X:
+            iStimSide = "RIGHT"
+          elif iStimPecked.get_x() == 0:
+            iStimSide = "CENTRE"
+        else:
+          iStimSide = "NO STIM PECKED"
         
         # FIX: Verify this value
         subOptChosen = termStimShown.chanceOfReinforcement == 0.5
-
-        # FIX: '; '.join(stimList[i])
 
         cStimPresented = ""
         for j in range(0, len(stimList[i])):
@@ -992,7 +1001,7 @@ def doStimPairing():
         if (expTimer.getTime() <= 0):
           break
         drawStims(stimList[i])
-        iStimPecked, iClickFlag, iPeckNum, iReactionTimes = waitForClicks(1, stimList[i])
+        iStimPecked, iClickFlag, iPeckNum, iReactionTimes = waitForClicks(1, stimList[i], EXPERIMENT_TIME)
         if iClickFlag == True:
           termStimShown = iStimPecked.drawTermLinks()
           win.flip()
@@ -1000,16 +1009,21 @@ def doStimPairing():
           tPeckNum, tReactionTimes = waitForTermLinks()
           #core.wait(TERM_DUR)
           
+          drawStims(listOfBlanks) #Display blank stimuli for duration of ITI
+
           giveReward(termStimShown.chanceOfReinforcement)
 
-          drawStims(listOfBlanks) #Display blank stimuli for duration of ITI
           
-          if iStimPecked.get_x() == L_X:
-            iStimSide = "LEFT"
-          elif iStimPecked.get_x() == R_X:
-            iStimSide = "RIGHT"
-          elif iStimPecked.get_x() == 0:
-            iStimSide = "CENTRE"
+          
+          if iClickFlag == True:
+            if iStimPecked.get_x() == L_X:
+              iStimSide = "LEFT"
+            elif iStimPecked.get_x() == R_X:
+              iStimSide = "RIGHT"
+            elif iStimPecked.get_x() == 0:
+              iStimSide = "CENTRE"
+          else:
+            iStimSide = "NO STIM PECKED"
           
           # FIX: Verify this value
           subOptChosen = termStimShown.chanceOfReinforcement == 0.5
@@ -1126,22 +1140,26 @@ def doTraining(ITI, pecksToReward, rewardIfNotPecked):
   for i in range(0, len(stimList)):
     trialNumber += 1
     drawStims(stimList[i])
-    stimPecked, clickFlag, peckNum, reactionTimes = waitForClicks(pecksToReward, stimList[i])
+    print("stimdur: ", stimDur)
+    stimPecked, clickFlag, peckNum, reactionTimes = waitForClicks(pecksToReward, stimList[i], stimDur)
 
     if rewardIfNotPecked or clickFlag:
       giveReward(1)
 
     drawStims(listOfBlanks) #Display blank stimuli for duration of ITI
 
-    print ("STIM POS: ", )
-    if stimPecked.get_x() == L_X:
-      stimSide = "LEFT"
-    elif stimPecked.get_x() == R_X:
-      stimSide = "RIGHT"
-    elif stimPecked.get_x() == 0:
-      stimSide = "CENTRE"
+    if clickFlag == True:
+      print ("STIM POS: ", )
+      if stimPecked.get_x() == L_X:
+        stimSide = "LEFT"
+      elif stimPecked.get_x() == R_X:
+        stimSide = "RIGHT"
+      elif stimPecked.get_x() == 0:
+        stimSide = "CENTRE"
+      else:
+        stimSide = "UNKOWN"
     else:
-      stimSide = "UNKOWN"
+        stimSide = "NO STIM PECKED"
 
     stimPresented = ""
     for j in range(0, len(stimList[i])):
@@ -1158,7 +1176,6 @@ def doTraining(ITI, pecksToReward, rewardIfNotPecked):
 
     waitForExitPress(ITI)
 
-    ## FIX: TAKE INPUT FOR TERMINATION
     if event.getKeys(keyList=["escape"]):
         print("User pressed escape")
         exit()
@@ -1218,7 +1235,7 @@ def main():
     global subjectNumber, sessionNumber, condition, contingency
     global rewardDuration, stimulusTimeout, testRunFlag, researchAssistant
     global dateStarted, timeStarted, programStartTime, birdInBoxTime
-    global programLoadTime, setNumber, programName, experimentStartTime
+    global programLoadTime, setNumber, programName, experimentStartTime, stimDur
 
     userResponses, userCancelled = getUserInput()
 
@@ -1231,14 +1248,16 @@ def main():
     condition = userResponses[3]
     contingency = userResponses[4]
     rewardDuration = userResponses[5]
-    stimulusTimeout = userResponses[6]
+    stimDur = userResponses[6]
     testRunFlag = userResponses[7]
     researchAssistant = userResponses[8]
 
     programName = "SubOptimalChoiceWithCommitment.py"
 
-    #FIX: Make dependent on a read from GamePort
-    apparatusPresent = "Yes"
+    if checkForApparatus() == True:
+      apparatusPresent = True
+    else:
+      apparatusPresent = False
 
     #Timestamp of when program is run
     dateStarted = time.strftime("%d_%m_%Y") 
