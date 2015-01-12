@@ -32,16 +32,24 @@ R_X = (screen_width/3)
 I_STIM_Y = (-1*(screen_width/16))
 CHOICE_Y = (screen_width/16)
 
-# Time  terminal link is presented before rewar is given
+# Time terminal link is presented before reward is given
 # FIX: Check this value
-TERM_DUR = 5
+TERM_DUR = 10
 
 # Time (in seconds) the hopper will stay up if the beam is not broken.
-TIMEOUT_PERIOD = 10
+TIMEOUT_PERIOD = 60
 
+#Time (in seconds) the hopper will stay up when the beam is broken
+REWARD_TIME = 1
+
+#Width of border around stimuli
 LINE_WIDTH = 4
 
-EXPERIMENT_TIME = 2700 #seconds = 45min
+# Time of day at which experiment will start
+# Set to 09:15
+EXPERIMENT_START_TIME = [9, 15]
+
+EXPERIMENT_TIME = 6300 #seconds = 105min
 
 class ChoiceStim:
   def __init__(self, name):
@@ -204,6 +212,9 @@ class TerminalLinkStim:
 
   def set_fill (self, fillCol):
         self.fillColour = fillCol
+
+  def get_fill(self):
+        return self.fillColour
         
   def set_outline (self, outlineCol):
         self.outlineColour = outlineCol
@@ -252,6 +263,7 @@ def rollForTermResult(initialLink):
                       1,1,1,1,1,1,1,1,1,1,
                       1,1,1,1,1,1,1,1,1,1,
                       1,1,1,1,1,1,1,1,1,1]
+
       random.shuffle(termResults1)
       random.shuffle(termResults2)
       index1 = 0
@@ -301,13 +313,13 @@ def rollDiceForFiftyFifty():
 
 
 def setup():
-    global win, mouse, rolledBefore, subjectNumber, datafile, writer, parallelPort, portValue, rolledFiftyFiftyBefore, trialNumber
+    global win, mouse, rolledBefore, subjectNumber, datafile, writer, parallelPort, portValue, rolledFiftyFiftyBefore, trialNumber, birdAte
 
     print("\nSetting up...")
     
     #initialize the window
     win = visual.Window(fullscr = True, rgb = [-1.000,-1.000,-1.000], units = "pix", winType = "pyglet")
-    
+
     #setup input from the mouse
     mouse = event.Mouse(visible = True)
     core.checkPygletDuringWait = True
@@ -316,7 +328,8 @@ def setup():
 
     portValue = 0x0000
     turnOnFan()
-    turnOnHouseLight()
+
+    birdAte = False
 
     rolledBefore = False
     rolledFFBefore = False
@@ -340,9 +353,9 @@ def setup():
                       "Condition", "PeckstoReward", "ProgramName", "TrialNumber",
                       "ProgramLoadTime", "BirdInBoxTime", "StartTime", 
                       "ExperimentEndTime", "ApparatusPresent",
-                      "TimeoutPeriod", "RewardDuration", "StimulusPresented", 
+                      "TimeoutPeriod", "RewardTime", "StimulusPresented", 
                       "StimulusSide", "ReactionTimes", "PeckNum", 
-                      "ITI"])
+                      "ITI", "BirdAte"])
 
     else:
         writer.writerow(['ResearchAssistant', 'SubjectNumber', 'SetNumber', 
@@ -351,7 +364,7 @@ def setup():
                          'TrialNumber', 'ProgramLoadTime', 'BirdInBoxTime', 
                          'ExperimentStartTime', 'ExperimentEndTime', 
                          'ApparatusPresent', 'TimeoutPeriod', 'RewardTime', 
-                         'ChoiceStimulus', 'Initial-Link', 'Terminal-Link', 
+                         'ChoiceStimulus', 'Initial-Link', 'Terminal-Link', 'Terminal-LinkColour'
                          'ChoiceStimulusSidePecked', 'Initial-LinkSidePecked', 
                          'ChoiceStimulusPecked',
                          'ChoiceStimulusReactionTime', 'Initial-LinkReactionTime', 
@@ -360,7 +373,7 @@ def setup():
                          'Inter-TrialInterval(ITI)', 
                          'ChoiceStimulusScreenPeckCount', 
                          'InitialLinkScreenPeckCount', 
-                         'Terminal-LinkScreenPeckCount', 'Sub-OptimalLinkChosen'])
+                         'Terminal-LinkScreenPeckCount', 'Sub-OptimalLinkChosen', 'BirdAte'])
 
 # Creates all stimuli required, and sets them as global values
 def createStimuli():
@@ -425,16 +438,16 @@ def matchStimuli(contingency, reversal):
         termLinkD.set_x(R_X)
 
         if reversal == False:
-          termLinkA.set_chanceOfReinforcement(0.5)
-          termLinkB.set_chanceOfReinforcement(0.5)
-          termLinkC.set_chanceOfReinforcement(1)
-          termLinkD.set_chanceOfReinforcement(0)
-
-        elif reversal == True:
           termLinkA.set_chanceOfReinforcement(1)
           termLinkB.set_chanceOfReinforcement(0)
           termLinkC.set_chanceOfReinforcement(0.5)
           termLinkD.set_chanceOfReinforcement(0.5)
+
+        elif reversal == True:
+          termLinkA.set_chanceOfReinforcement(0.5)
+          termLinkB.set_chanceOfReinforcement(0.5)
+          termLinkC.set_chanceOfReinforcement(1)
+          termLinkD.set_chanceOfReinforcement(0)
 
 
         choiceA.add_initStim(initA)
@@ -460,16 +473,16 @@ def matchStimuli(contingency, reversal):
         termLinkD.set_x(L_X)
 
         if reversal == False:
-          termLinkA.set_chanceOfReinforcement(0.5)
-          termLinkB.set_chanceOfReinforcement(1)
-          termLinkC.set_chanceOfReinforcement(0)
-          termLinkD.set_chanceOfReinforcement(0.5)
-
-        elif reversal == True:
           termLinkA.set_chanceOfReinforcement(0)
           termLinkB.set_chanceOfReinforcement(0.5)
           termLinkC.set_chanceOfReinforcement(0.5)
           termLinkD.set_chanceOfReinforcement(1)
+
+        elif reversal == True:
+          termLinkA.set_chanceOfReinforcement(0.5)
+          termLinkB.set_chanceOfReinforcement(1)
+          termLinkC.set_chanceOfReinforcement(0)
+          termLinkD.set_chanceOfReinforcement(0.5)
 
         choiceA.add_initStim(initB)
         choiceB.add_initStim(initA)
@@ -494,16 +507,16 @@ def matchStimuli(contingency, reversal):
         termLinkD.set_x(L_X)
 
         if reversal == False:
-          termLinkA.set_chanceOfReinforcement(1)
-          termLinkB.set_chanceOfReinforcement(0)
-          termLinkC.set_chanceOfReinforcement(0.5)
-          termLinkD.set_chanceOfReinforcement(0.5)
-
-        elif reversal == True:
           termLinkA.set_chanceOfReinforcement(0.5)
           termLinkB.set_chanceOfReinforcement(0.5)
           termLinkC.set_chanceOfReinforcement(1)
           termLinkD.set_chanceOfReinforcement(0)
+
+        elif reversal == True:
+          termLinkA.set_chanceOfReinforcement(1)
+          termLinkB.set_chanceOfReinforcement(0)
+          termLinkC.set_chanceOfReinforcement(0.5)
+          termLinkD.set_chanceOfReinforcement(0.5)
 
         choiceA.add_initStim(initB)
         choiceB.add_initStim(initA)
@@ -528,16 +541,16 @@ def matchStimuli(contingency, reversal):
         termLinkD.set_x(R_X)
 
         if reversal == False:
-          termLinkA.set_chanceOfReinforcement(0)
-          termLinkB.set_chanceOfReinforcement(0.5)
-          termLinkC.set_chanceOfReinforcement(0.5)
-          termLinkD.set_chanceOfReinforcement(1)
-
-        elif reversal == True:
           termLinkA.set_chanceOfReinforcement(0.5)
           termLinkB.set_chanceOfReinforcement(1)
           termLinkC.set_chanceOfReinforcement(0)
           termLinkD.set_chanceOfReinforcement(0.5)
+
+        elif reversal == True:
+          termLinkA.set_chanceOfReinforcement(1)
+          termLinkB.set_chanceOfReinforcement(0.5)
+          termLinkC.set_chanceOfReinforcement(0.5)
+          termLinkD.set_chanceOfReinforcement(0)
 
         choiceA.add_initStim(initA)
         choiceB.add_initStim(initB)
@@ -559,10 +572,16 @@ def makeChoiceStimList():
     choiceList2 = [choiceA, choiceC]
     choiceList3 = [choiceB, choiceC]
 
-    for i in range(0,10):
+    for i in range(0,20):
+      # 20 of each type of forced choice
       choiceList.append([choiceA])
       choiceList.append([choiceB])
       choiceList.append([choiceC])
+
+      # 40 of each type of choice 
+      choiceList.append(choiceList1)
+      choiceList.append(choiceList2)
+      choiceList.append(choiceList3)
       choiceList.append(choiceList1)
       choiceList.append(choiceList2)
       choiceList.append(choiceList3)
@@ -672,7 +691,7 @@ def displayEndScreen():
 # 0.5 = 50%
 # 0 = no reward
 def giveReward(probability):
-  global fiftyFifty, fiftyFiftyIndex, rolledFiftyFiftyBefore
+  global fiftyFifty, fiftyFiftyIndex, rolledFiftyFiftyBefore, birdAte
   hopperDropped = ""
   if apparatusPresent:
     if probability == 1:
@@ -694,14 +713,22 @@ def giveReward(probability):
       if fiftyFifty[fiftyFiftyIndex] == 1:
         hopperDropped = dropHoppersAtRandom()
         print("Reward given with probability of: ", probability)
+      else:
+        print("Reward not given")
+        probability = 0
+        # In place of 1 second of hopper access
+        core.wait(REWARD_TIME)
+
     else:
       print("Reward not given")
       # In place of 1 second of hopper access
-      core.wait(1)
+      core.wait(REWARD_TIME)
 
     if probability > 0:
 
+      birdAte = False
       hopperTimer = core.CountdownTimer(TIMEOUT_PERIOD)
+
       # Read IR beam
 
       if hopperDropped == "L":
@@ -710,10 +737,11 @@ def giveReward(probability):
           core.wait(0.1)
           irValue = readLeftHopperBeam()
           if irValue == 0:
+              birdAte = True
               break
         
         ## 1 second of hopper access
-        core.wait(1)
+        core.wait(REWARD_TIME)
         dropLeftHopper()
 
       else:
@@ -721,11 +749,12 @@ def giveReward(probability):
         while (hopperTimer.getTime() > 0):
           core.wait(0.1)
           irValue = readRightHopperBeam()
-          if irValue == 0:  
+          if irValue == 0:
+              birdAte = True
               break
 
         ## 1 second of hopper access
-        core.wait(1)
+        core.wait(REWARD_TIME)
         dropRightHopper()
  
   else:
@@ -883,16 +912,15 @@ def doExperimentalPhase():
         if (expTimer.getTime() <= 0):
           break
         drawStims(stimList[i])
-        cStimPecked, cClickFlag, cPeckNum, cReactionTimes = waitForClicks(1, stimList[i], EXPERIMENT_TIME)
+        cStimPecked, cClickFlag, cPeckNum, cReactionTimes = waitForClicks(1, stimList[i], expTimer.getTime())
         if cClickFlag == True:
           drawStims(cStimPecked.initStims)
-          iStimPecked, iClickFlag, iPeckNum, iReactionTimes = waitForClicks(1, cStimPecked.initStims, EXPERIMENT_TIME)
+          iStimPecked, iClickFlag, iPeckNum, iReactionTimes = waitForClicks(1, cStimPecked.initStims, expTimer.getTime())
           if iClickFlag == True:
             termStimShown = iStimPecked.drawTermLinks()
             win.flip()
 
             tPeckNum, tReactionTimes = waitForTermLinks()
-            #core.wait(TERM_DUR)
 
             drawStims(listOfBlanks) #Display blank stimuli for duration of ITI
             
@@ -922,7 +950,7 @@ def doExperimentalPhase():
           iStimSide = "NO STIM PECKED"
         
         # FIX: Verify this value
-        subOptChosen = termStimShown.chanceOfReinforcement == 0.5
+        subOptChosen = termStimShown.chanceOfReinforcement != 0.5
 
         cStimPresented = ""
         for j in range(0, len(stimList[i])):
@@ -940,12 +968,12 @@ def doExperimentalPhase():
                       condition, "1", programName, trialNumber,
                       programLoadTime, birdInBoxTime, experimentStartTime, 
                       "N/A", apparatusPresent,
-                      TIMEOUT_PERIOD, rewardDuration, cStimPresented,
-                      iStimPresented, termStimShown.name, 
+                      TIMEOUT_PERIOD, REWARD_TIME, cStimPresented,
+                      iStimPresented, termStimShown.name, termStimShown.get_fill(),
                       cStimSide, iStimSide,
                       cStimPecked.name, cReactionTimes, iReactionTimes, str(tReactionTimes),
                       tReactionTimes[0], tReactionTimes[(len(tReactionTimes)-1)], TERM_DUR,
-                      ITI, cPeckNum, iPeckNum, tPeckNum, subOptChosen])
+                      ITI, cPeckNum, iPeckNum, tPeckNum, subOptChosen, birdAte])
 
         waitForExitPress(ITI)
 
@@ -953,15 +981,15 @@ def doExperimentalPhase():
 
     writer.writerow([researchAssistant, subjectNumber, setNumber,
                       sessionNumber, dateStarted + " " + timeStarted, contingency,
-                      condition, "1", programName, "N/A",
+                      condition, "1", programName, "N/A", 
                       programLoadTime, birdInBoxTime, experimentStartTime, 
                       endTime, apparatusPresent,
-                      TIMEOUT_PERIOD, rewardDuration, "N/A",
-                      "N/A", "N/A", 
+                      TIMEOUT_PERIOD, REWARD_TIME, "N/A",
+                      "N/A", "N/A", "N/A"
                       "N/A", "N/A",
                       "N/A", "N/A", "N/A", "N/A",
                       "N/A", "N/A", TERM_DUR,
-                      ITI, "N/A", "N/A", "N/A", "N/A"])
+                      ITI, "N/A", "N/A", "N/A", "N/A", "N/A"])
 
     while (expTimer.getTime() > 0):
       drawStims(listOfBlanks)
@@ -976,9 +1004,13 @@ def makeInitStimList():
 
     initList1 = [initA, initB]
 
-    for i in range(0,20):
+    for i in range(0,40):
+      # 40 of each forced choice
       initList.append([initA])
       initList.append([initB])
+
+      # 80 choice trials
+      initList.append(initList1)
       initList.append(initList1)
 
     random.shuffle(initList)
@@ -1001,20 +1033,17 @@ def doStimPairing():
         if (expTimer.getTime() <= 0):
           break
         drawStims(stimList[i])
-        iStimPecked, iClickFlag, iPeckNum, iReactionTimes = waitForClicks(1, stimList[i], EXPERIMENT_TIME)
+        iStimPecked, iClickFlag, iPeckNum, iReactionTimes = waitForClicks(1, stimList[i], expTimer.getTime())
         if iClickFlag == True:
           termStimShown = iStimPecked.drawTermLinks()
           win.flip()
 
           tPeckNum, tReactionTimes = waitForTermLinks()
-          #core.wait(TERM_DUR)
           
           drawStims(listOfBlanks) #Display blank stimuli for duration of ITI
 
           giveReward(termStimShown.chanceOfReinforcement)
 
-          
-          
           if iClickFlag == True:
             if iStimPecked.get_x() == L_X:
               iStimSide = "LEFT"
@@ -1026,7 +1055,7 @@ def doStimPairing():
             iStimSide = "NO STIM PECKED"
           
           # FIX: Verify this value
-          subOptChosen = termStimShown.chanceOfReinforcement == 0.5
+          subOptChosen = termStimShown.chanceOfReinforcement != 0.5
 
           stimPresented = ""
           for j in range(0, len(stimList[i])):
@@ -1042,12 +1071,12 @@ def doStimPairing():
                         condition, "1", programName, trialNumber,
                         programLoadTime, birdInBoxTime, experimentStartTime, 
                         "N/A", apparatusPresent,
-                        TIMEOUT_PERIOD, rewardDuration, "N/A",
-                        stimPresented, termStimPresented, 
+                        TIMEOUT_PERIOD, REWARD_TIME, "N/A",
+                        stimPresented, termStimPresented, termStimShown.get_fill(),
                         "N/A", iStimSide,
                         "N/A", "N/A", iReactionTimes, str(tReactionTimes),
                         tReactionTimes[0], tReactionTimes[(len(tReactionTimes)-1)], TERM_DUR,
-                        ITI, "N/A", iPeckNum, tPeckNum, subOptChosen])
+                        ITI, "N/A", iPeckNum, tPeckNum, subOptChosen, birdAte])
 
           waitForExitPress(ITI)
 
@@ -1058,12 +1087,12 @@ def doStimPairing():
                       condition, "1", programName, "N/A",
                       programLoadTime, birdInBoxTime, experimentStartTime, 
                       endTime, apparatusPresent,
-                      TIMEOUT_PERIOD, rewardDuration, "N/A",
-                      "N/A", "N/A", 
+                      TIMEOUT_PERIOD, REWARD_TIME, "N/A",
+                      "N/A", "N/A", "N/A"
                       "N/A", "N/A",
                       "N/A", "N/A", "N/A", "N/A",
                       "N/A", "N/A", TERM_DUR,
-                      ITI, "N/A", "N/A", "N/A", "N/A"])
+                      ITI, "N/A", "N/A", "N/A", "N/A", "N/A"])
 
     while (expTimer.getTime() > 0):
       drawStims(listOfBlanks)
@@ -1116,7 +1145,7 @@ def generateListOfAllStims():
   RtermLinkD = TerminalLinkStim("TermD")
   RtermLinkD.set_x(R_X)
 
-  stimList = [[LChoiceA], [CChoiceA], [RChoiceA], #FIX: Add more
+  stimList = [[LChoiceA], [CChoiceA], [RChoiceA],
               [LChoiceB], [CChoiceB], [RChoiceB],
               [LChoiceC], [CChoiceC], [RChoiceC],
               [LinitA], [RinitA],
@@ -1131,65 +1160,73 @@ def generateListOfAllStims():
 
 # Operant Training. "pecksToReward" signifsties the FR schedule.
 def doTraining(ITI, pecksToReward, rewardIfNotPecked):
+
   createStimuli()
-  stimList = generateListOfAllStims()
   trialNumber = 0
 
-  # Add 45 minute timer? 
-  # If no 45 minute timer, refer to previous FIX message
-  for i in range(0, len(stimList)):
-    trialNumber += 1
-    drawStims(stimList[i])
-    print("stimdur: ", stimDur)
-    stimPecked, clickFlag, peckNum, reactionTimes = waitForClicks(pecksToReward, stimList[i], stimDur)
+  expTimer = core.CountdownTimer(EXPERIMENT_TIME)
 
-    if rewardIfNotPecked or clickFlag:
-      giveReward(1)
+  while (expTimer.getTime() > 0):
 
-    drawStims(listOfBlanks) #Display blank stimuli for duration of ITI
+    stimList = generateListOfAllStims()
 
-    if clickFlag == True:
-      print ("STIM POS: ", )
-      if stimPecked.get_x() == L_X:
-        stimSide = "LEFT"
-      elif stimPecked.get_x() == R_X:
-        stimSide = "RIGHT"
-      elif stimPecked.get_x() == 0:
-        stimSide = "CENTRE"
+    for i in range(0, len(stimList)):
+      trialNumber += 1
+
+      if (expTimer.getTime() <= 0):
+            break
+
+      drawStims(stimList[i])
+      print("stimdur: ", stimDur)
+      stimPecked, clickFlag, peckNum, reactionTimes = waitForClicks(pecksToReward, stimList[i], stimDur)
+
+      if rewardIfNotPecked or clickFlag:
+        giveReward(1)
+
+      drawStims(listOfBlanks) #Display blank stimuli for duration of ITI
+
+      if clickFlag == True:
+        print ("STIM POS: ", )
+        if stimPecked.get_x() == L_X:
+          stimSide = "LEFT"
+        elif stimPecked.get_x() == R_X:
+          stimSide = "RIGHT"
+        elif stimPecked.get_x() == 0:
+          stimSide = "CENTRE"
+        else:
+          stimSide = "UNKOWN"
       else:
-        stimSide = "UNKOWN"
-    else:
-        stimSide = "NO STIM PECKED"
+          stimSide = "NO STIM PECKED"
 
-    stimPresented = ""
-    for j in range(0, len(stimList[i])):
-      stimPresented += stimList[i][j].name + " "
+      stimPresented = ""
+      for j in range(0, len(stimList[i])):
+        stimPresented += stimList[i][j].name + " "
 
-    writer.writerow([researchAssistant, subjectNumber, setNumber,
-                      sessionNumber, dateStarted + " " + timeStarted, contingency,
-                      condition, pecksToReward, programName, trialNumber,
-                      programLoadTime, birdInBoxTime, experimentStartTime, 
-                      "N/A", apparatusPresent,
-                      TIMEOUT_PERIOD, rewardDuration, stimPresented, 
-                      stimSide, str(reactionTimes), peckNum, 
-                      ITI])
+      writer.writerow([researchAssistant, subjectNumber, setNumber,
+                        sessionNumber, dateStarted + " " + timeStarted, contingency,
+                        condition, pecksToReward, programName, trialNumber,
+                        programLoadTime, birdInBoxTime, experimentStartTime, 
+                        "N/A", apparatusPresent,
+                        TIMEOUT_PERIOD, REWARD_TIME, stimPresented, 
+                        stimSide, str(reactionTimes), peckNum, 
+                        ITI])
 
-    waitForExitPress(ITI)
+      waitForExitPress(ITI)
 
-    if event.getKeys(keyList=["escape"]):
-        print("User pressed escape")
-        exit()
+      if event.getKeys(keyList=["escape"]):
+          print("User pressed escape")
+          exit()
 
   endTime = time.strftime("%H:%M")
 
-  writer.writerow([researchAssistant, subjectNumber, setNumber.
-                      sessionNumber, dateStarted + " " + timeStarted, contingency,
-                      condition, pecksToReward, programName, "N/A",
-                      programLoadTime, birdInBoxTime, experimentStartTime, 
-                      endTime, apparatusPresent,
-                      TIMEOUT_PERIOD, rewardDuration, "N/A", 
-                      "N/A", "N/A", "N/A", 
-                      ITI])
+  writer.writerow([researchAssistant, subjectNumber, setNumber,
+                   sessionNumber, dateStarted + " " + timeStarted, contingency,
+                   condition, pecksToReward, programName, "N/A",
+                   programLoadTime, birdInBoxTime, experimentStartTime, 
+                   endTime, apparatusPresent,
+                   TIMEOUT_PERIOD, REWARD_TIME, "N/A", 
+                   "N/A", "N/A", "N/A", 
+                   ITI])
 
   displayEndScreen()
 
@@ -1205,7 +1242,6 @@ def getUserInput():
     myDlg.addField('Set number:', 0)
     myDlg.addField('Condition:', choices = ['Autoshaping (FR1)', 'Operant Training (FR1)', 'Operant Training (FR3)', 'Operant Training (FR5)', 'Stim Pairing', 'Experimental Phase', 'Experimental Reversal'])
     myDlg.addField('Contingency:', choices = ['1', '2', '3', '4'])
-    myDlg.addField('Reward Duration:', 10)
     myDlg.addField('Stimulus Timeout:', 60)
     myDlg.addField('Is this a test?:', choices = ['Yes', 'No'])
     myDlg.addField('Research Assistant:')
@@ -1228,12 +1264,30 @@ def waitForSpacebar():
       print("User pressed spacebar")
       break
 
+def waitForExperiment():
+  bibTextContent = "Bird in Box --- Waiting until " + str(EXPERIMENT_START_TIME[0]) + ":" + str(EXPERIMENT_START_TIME[1])
+  bibText =visual.TextStim(win, text=bibTextContent, pos=(0.0, 500), alignVert = "top")
+  bibText.draw()
+  win.flip()
+
+
+  while True:
+    if (time.localtime()[3] == EXPERIMENT_START_TIME[0]):
+      if (time.localtime()[4] >= EXPERIMENT_START_TIME[1]):
+        break
+    elif (time.localtime()[3] > EXPERIMENT_START_TIME[0]):
+      break
+    if event.getKeys(["escape"]):
+        print("User pressed escape")
+        exit()
+
+
 # Turns all inputs into global variables, sets up experiment, and decides
 # which experimental phase to call.
 def main():
     global ITI, contingency, reversal, subjectNumber, apparatusPresent
     global subjectNumber, sessionNumber, condition, contingency
-    global rewardDuration, stimulusTimeout, testRunFlag, researchAssistant
+    global stimulusTimeout, testRunFlag, researchAssistant
     global dateStarted, timeStarted, programStartTime, birdInBoxTime
     global programLoadTime, setNumber, programName, experimentStartTime, stimDur
 
@@ -1247,12 +1301,14 @@ def main():
     setNumber = userResponses[2]
     condition = userResponses[3]
     contingency = userResponses[4]
-    rewardDuration = userResponses[5]
-    stimDur = userResponses[6]
-    testRunFlag = userResponses[7]
-    researchAssistant = userResponses[8]
+    stimDur = userResponses[5]
+    testRunFlag = userResponses[6]
+    researchAssistant = userResponses[7]
 
     programName = "SubOptimalChoiceWithCommitment.py"
+
+    if len(researchAssistant) == 0:
+      researchAssistant = "Unlisted"
 
     if checkForApparatus() == True:
       apparatusPresent = True
@@ -1282,6 +1338,10 @@ def main():
       spacebarText.draw()
       win.flip()
       waitForSpacebar()
+
+      if testRunFlag == "No":
+        waitForExperiment()
+
       birdInBoxTime = time.strftime("%H:%M")
     except:
       print("Wait screen error")
