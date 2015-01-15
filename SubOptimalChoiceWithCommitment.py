@@ -364,7 +364,7 @@ def setup():
                          'TrialNumber', 'ProgramLoadTime', 'BirdInBoxTime', 
                          'ExperimentStartTime', 'ExperimentEndTime', 
                          'ApparatusPresent', 'TimeoutPeriod', 'RewardTime', 
-                         'ChoiceStimulus', 'Initial-Link', 'Terminal-Link', 'Terminal-LinkColour'
+                         'ChoiceStimulus', 'Initial-Link', 'Terminal-Link', 'Terminal-LinkColour',
                          'ChoiceStimulusSidePecked', 'Initial-LinkSidePecked', 
                          'ChoiceStimulusPecked',
                          'ChoiceStimulusReactionTime', 'Initial-LinkReactionTime', 
@@ -760,6 +760,37 @@ def giveReward(probability):
   else:
     print("Apparatus not present")
 
+    ## FIX: MAKE THIS CODE MORE CONDENSED.
+    if probability == 1:
+      print("Reward given with probability of: ", probability)
+
+    elif probability == 0.5:
+      if not rolledFiftyFiftyBefore:
+        fiftyFifty = [0,0,0,0,0,0,0,0,0,0,
+                      0,0,0,0,0,0,0,0,0,0,
+                      1,1,1,1,1,1,1,1,1,1,
+                      1,1,1,1,1,1,1,1,1,1]
+
+        random.shuffle(fiftyFifty)
+        rolledFiftyFiftyBefore = True
+        fiftyFiftyIndex = -1
+      
+      fiftyFiftyIndex += 1
+      if fiftyFifty[fiftyFiftyIndex] == 1:
+        print("Reward given with probability of: ", probability)
+      else:
+        print("Reward not given")
+        probability = 0
+
+    else:
+      print("Reward not given")
+      # In place of 1 second of hopper access
+      core.wait(REWARD_TIME)
+
+    if probability > 0:
+      
+      birdAte = True
+
 # Randomly chooses a hopper to drop.
 # Call this function when it doesn't matter which hopper is dropped
 def dropHoppersAtRandom():
@@ -894,6 +925,7 @@ def waitForTermLinks():
 # Main experimental phase. Reversal changes chance of reinforcement.
 def doExperimentalPhase():
     print("Starting experimental phase...")
+    global birdAte
 
     createStimuli()
     matchStimuli(contingency, reversal)
@@ -924,8 +956,9 @@ def doExperimentalPhase():
 
             drawStims(listOfBlanks) #Display blank stimuli for duration of ITI
             
+            birdAte = False
             giveReward(termStimShown.chanceOfReinforcement)
-
+            
           
         cStimSide = ""
         iStimSide = ""
@@ -961,17 +994,38 @@ def doExperimentalPhase():
           iStimPresented += cStimPecked.initStims[h].name + " "
 
         if len(tReactionTimes) == 0:
-          tReactionTimes.append("N/A")
+          tReactionTimes.append("")
+        tPeckLog = ""
+        for m in range(0, len(tReactionTimes)):
+          if m == 0:
+            tPeckLog = str(tReactionTimes[m])
+          else:
+            tPeckLog = tPeckLog + ", " + str(tReactionTimes[m])
+
+        cReactTimeStr = ""
+        for k in range(0, len(cReactionTimes)):
+          if k == 0:
+            cReactTimeStr = str(cReactionTimes[k])
+          else:
+            cReactTimeStr = cReactTimeStr + ", " + str(cReactionTimes[k])
+
+        iReactTimeStr = ""
+        for l in range(0, len(iReactionTimes)):
+          if l == 0:
+            iReactTimeStr = str(iReactionTimes[l])
+          else:
+            iReactTimeStr = iReactTimeStr + ", " + str(iReactionTimes[l])
+
 
         writer.writerow([researchAssistant, subjectNumber, setNumber,
                       sessionNumber, dateStarted + " " + timeStarted, contingency,
                       condition, "1", programName, trialNumber,
                       programLoadTime, birdInBoxTime, experimentStartTime, 
-                      "N/A", apparatusPresent,
+                      "", apparatusPresent,
                       TIMEOUT_PERIOD, REWARD_TIME, cStimPresented,
                       iStimPresented, termStimShown.name, termStimShown.get_fill(),
                       cStimSide, iStimSide,
-                      cStimPecked.name, cReactionTimes, iReactionTimes, str(tReactionTimes),
+                      cStimPecked.name, cReactTimeStr, iReactTimeStr, tPeckLog,
                       tReactionTimes[0], tReactionTimes[(len(tReactionTimes)-1)], TERM_DUR,
                       ITI, cPeckNum, iPeckNum, tPeckNum, subOptChosen, birdAte])
 
@@ -981,15 +1035,15 @@ def doExperimentalPhase():
 
     writer.writerow([researchAssistant, subjectNumber, setNumber,
                       sessionNumber, dateStarted + " " + timeStarted, contingency,
-                      condition, "1", programName, "N/A", 
+                      condition, "1", programName, "", 
                       programLoadTime, birdInBoxTime, experimentStartTime, 
                       endTime, apparatusPresent,
-                      TIMEOUT_PERIOD, REWARD_TIME, "N/A",
-                      "N/A", "N/A", "N/A"
-                      "N/A", "N/A",
-                      "N/A", "N/A", "N/A", "N/A",
-                      "N/A", "N/A", TERM_DUR,
-                      ITI, "N/A", "N/A", "N/A", "N/A", "N/A"])
+                      TIMEOUT_PERIOD, REWARD_TIME, "",
+                      "", "", "",
+                      "", "",
+                      "", "", "", "",
+                      "", "", TERM_DUR,
+                      ITI, "", "", "", "", ""])
 
     while (expTimer.getTime() > 0):
       drawStims(listOfBlanks)
@@ -1020,6 +1074,8 @@ def makeInitStimList():
 # Stimulus pairing phase.
 
 def doStimPairing():
+    global birdAte
+
     createStimuli()
     matchStimuli(contingency, reversal)
     stimList = makeInitStimList()
@@ -1042,7 +1098,9 @@ def doStimPairing():
           
           drawStims(listOfBlanks) #Display blank stimuli for duration of ITI
 
+          birdAte = False
           giveReward(termStimShown.chanceOfReinforcement)
+          
 
           if iClickFlag == True:
             if iStimPecked.get_x() == L_X:
@@ -1064,19 +1122,33 @@ def doStimPairing():
           termStimPresented = termStimShown.name
 
           if len(tReactionTimes) == 0:
-            tReactionTimes.append("N/A")
+            tReactionTimes.append("")
+          tPeckLog = ""
+
+          for m in range(0, len(tReactionTimes)):
+            if m == 0:
+              tPeckLog = str(tReactionTimes[m])
+            else:
+              tPeckLog = tPeckLog + ", " + str(tReactionTimes[m])
+
+          iReactTimeStr = ""
+          for l in range(0, len(iReactionTimes)):
+            if l == 0:
+              iReactTimeStr = str(iReactionTimes[l])
+            else:
+              iReactTimeStr = iReactTimeStr + ", " + str(iReactionTimes[l])
 
           writer.writerow([researchAssistant, subjectNumber, setNumber,
                         sessionNumber, dateStarted + " " + timeStarted, contingency,
                         condition, "1", programName, trialNumber,
                         programLoadTime, birdInBoxTime, experimentStartTime, 
-                        "N/A", apparatusPresent,
-                        TIMEOUT_PERIOD, REWARD_TIME, "N/A",
+                        "", apparatusPresent,
+                        TIMEOUT_PERIOD, REWARD_TIME, "",
                         stimPresented, termStimPresented, termStimShown.get_fill(),
-                        "N/A", iStimSide,
-                        "N/A", "N/A", iReactionTimes, str(tReactionTimes),
+                        "", iStimSide,
+                        "", "", iReactTimeStr, tPeckLog,
                         tReactionTimes[0], tReactionTimes[(len(tReactionTimes)-1)], TERM_DUR,
-                        ITI, "N/A", iPeckNum, tPeckNum, subOptChosen, birdAte])
+                        ITI, "", iPeckNum, tPeckNum, subOptChosen, birdAte])
 
           waitForExitPress(ITI)
 
@@ -1084,15 +1156,15 @@ def doStimPairing():
 
     writer.writerow([researchAssistant, subjectNumber, setNumber,
                       sessionNumber, dateStarted + " " + timeStarted, contingency,
-                      condition, "1", programName, "N/A",
+                      condition, "1", programName, "",
                       programLoadTime, birdInBoxTime, experimentStartTime, 
                       endTime, apparatusPresent,
-                      TIMEOUT_PERIOD, REWARD_TIME, "N/A",
-                      "N/A", "N/A", "N/A"
-                      "N/A", "N/A",
-                      "N/A", "N/A", "N/A", "N/A",
-                      "N/A", "N/A", TERM_DUR,
-                      ITI, "N/A", "N/A", "N/A", "N/A", "N/A"])
+                      TIMEOUT_PERIOD, REWARD_TIME, "",
+                      "", "", "",
+                      "", "",
+                      "", "", "", "",
+                      "", "", TERM_DUR,
+                      ITI, "", "", "", "", ""])
 
     while (expTimer.getTime() > 0):
       drawStims(listOfBlanks)
@@ -1202,13 +1274,20 @@ def doTraining(ITI, pecksToReward, rewardIfNotPecked):
       for j in range(0, len(stimList[i])):
         stimPresented += stimList[i][j].name + " "
 
+      reactTimeStr = ""
+      for k in range(0, len(reactionTimes)):
+        if k == 0:
+          reactTimeStr = str(reactionTimes[k])
+        else:
+          reactTimeStr = reactTimeStr + ", " + str(reactionTimes[k])
+
       writer.writerow([researchAssistant, subjectNumber, setNumber,
                         sessionNumber, dateStarted + " " + timeStarted, contingency,
                         condition, pecksToReward, programName, trialNumber,
                         programLoadTime, birdInBoxTime, experimentStartTime, 
-                        "N/A", apparatusPresent,
+                        "", apparatusPresent,
                         TIMEOUT_PERIOD, REWARD_TIME, stimPresented, 
-                        stimSide, str(reactionTimes), peckNum, 
+                        stimSide, reactTimeStr, peckNum, 
                         ITI])
 
       waitForExitPress(ITI)
@@ -1221,11 +1300,11 @@ def doTraining(ITI, pecksToReward, rewardIfNotPecked):
 
   writer.writerow([researchAssistant, subjectNumber, setNumber,
                    sessionNumber, dateStarted + " " + timeStarted, contingency,
-                   condition, pecksToReward, programName, "N/A",
+                   condition, pecksToReward, programName, "",
                    programLoadTime, birdInBoxTime, experimentStartTime, 
                    endTime, apparatusPresent,
-                   TIMEOUT_PERIOD, REWARD_TIME, "N/A", 
-                   "N/A", "N/A", "N/A", 
+                   TIMEOUT_PERIOD, REWARD_TIME, "", 
+                   "", "", "", 
                    ITI])
 
   displayEndScreen()
@@ -1383,10 +1462,10 @@ def main():
       print("Experiment error")
       endTime = time.strftime("%H:%M")
 
-      writer.writerow(["N/A", "N/A", "N/A",
-                        "N/A", "N/A", "N/A",
-                        "N/A", "N/A", "N/A", "N/A",
-                        "N/A", "N/A", "N/A", 
+      writer.writerow(["", "", "",
+                        "", "", "",
+                        "", "", "", "",
+                        "", "", "", 
                         endTime])
       writer.writerow([])
       datafile.close()
