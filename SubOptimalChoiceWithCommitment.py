@@ -1,6 +1,6 @@
 from sys import platform as _platform
 from psychopy import visual, core, parallel, gui, event
-import time, csv, random, datetime, os
+import time, csv, random, datetime, os, logging, sys
 import readPort
 
 #Determine which OS is being used, and calculate the screen size
@@ -23,18 +23,13 @@ elif _platform == "win32":
    screen_width = GetSystemMetrics (0)
    screen_height = GetSystemMetrics (1)
 
-  
-  # Constants
-  # -------------------------------------------------------------------------------
+# Constants
+# -------------------------------------------------------------------------------
   
 L_X = (-1*(screen_width/3))
 R_X = (screen_width/3)
 I_STIM_Y = (-1*(screen_width/16))
 CHOICE_Y = (screen_width/16)
-
-# Time terminal link is presented before reward is given
-# FIX: Check this value
-TERM_DUR = 10
 
 # Time (in seconds) the hopper will stay up if the beam is not broken.
 TIMEOUT_PERIOD = 60
@@ -46,11 +41,15 @@ REWARD_TIME = 1
 LINE_WIDTH = 4
 
 # Time of day at which experiment will start
+# First element represents hours (24hr format)
+# Second element represents minutes
 # Set to 09:15
 EXPERIMENT_START_TIME = [9, 15]
 
+#Time (in seconds) the experiment will run
 EXPERIMENT_TIME = 6300 #seconds = 105min
 
+#A stimulus which can lead to one of two other stimuli
 class ChoiceStim:
   def __init__(self, name):
           self.x = 0
@@ -115,8 +114,7 @@ class ChoiceStim:
           self.boundingBox = visual.Rect(win, lineWidth = 4, width = self.width, height = self.height, pos = (self.x, self.y), units = "pix", lineColor = self.outlineColour, fillColor = self.fillColour)
           self.boundingBox.draw()
 
-          
-
+#A stimulus which leads to one other stimulus, directly below it
 class InitialLinkStim:
   def __init__(self, name):
           self.x = 0
@@ -199,6 +197,7 @@ class InitialLinkStim:
 
           return termStimShown
 
+#A stimulus which is presented and then holds for a particular period of time, regardless of input
 class TerminalLinkStim:
   def __init__(self, name):
           self.x = 0
@@ -249,41 +248,41 @@ class TerminalLinkStim:
         self.boundingBox = visual.Circle(win, lineWidth = LINE_WIDTH, radius = self.radius, pos = (self.x, self.y), units = "pix", lineColor = self.outlineColour, fillColor = self.fillColour)
         self.boundingBox.draw()
           
-
+#Determine which terminal link is shown
 def rollForTermResult(initialLink):
-    global termResults1, termResults2, rolledBefore, index1, index2
+    global termResults1, termResults2, rolledABefore, rolledBBefore, index1, index2
 
-    if not rolledBefore:
-      termResults1 = [0,0,0,0,0,0,0,0,1,1,
-                      1,1,1,1,1,1,1,1,1,1,
-                      1,1,1,1,1,1,1,1,1,1,
-                      1,1,1,1,1,1,1,1,1,1]
-
-      termResults2 = [0,0,0,0,0,0,0,0,1,1,
-                      1,1,1,1,1,1,1,1,1,1,
-                      1,1,1,1,1,1,1,1,1,1,
-                      1,1,1,1,1,1,1,1,1,1]
+    #reset the chance output array for stims of InitA
+    if not rolledABefore:
+      termResults1 = [0,0,1,1,1,
+                      1,1,1,1,1]
 
       random.shuffle(termResults1)
-      random.shuffle(termResults2)
       index1 = 0
+
+    #reset the chance output array for stims of InitB
+    if not rolledBBefore:
+      termResults2 = [0,0,1,1,1,
+                      1,1,1,1,1]
+      random.shuffle(termResults2)
       index2 = 0
 
-    rolledBefore = True
+    rolledABefore = True
+    rolledBBefore = True
 
     if initialLink.name == "InitA":
       result = termResults1[index1]
       index1 += 1
 
       if index1 == len(termResults1):
-        rolledBefore = False
+        rolledABefore = False
 
     elif initialLink.name == "InitB":
       result = termResults2[index2]
       index2 += 1
 
       if index2 == len(termResults2):
-        rolledBefore = False
+        rolledBBefore = False
 
     return result
 
@@ -293,10 +292,8 @@ def rollDiceForFiftyFifty():
     global rolledFFBefore, FFResults, FFIndex
 
     if not rolledFFBefore:
-        FFResults = [0,0,0,0,0,0,0,0,0,0,
-                     0,0,0,0,0,0,0,0,0,0,
-                     1,1,1,1,1,1,1,1,1,1,
-                     1,1,1,1,1,1,1,1,1,1]
+        FFResults = [0,0,0,0,0,
+                     1,1,1,1,1]
 
         random.shuffle(FFResults)
         FFIndex = -1
@@ -311,11 +308,37 @@ def rollDiceForFiftyFifty():
 
     return FFResults[FFIndex]
 
+#Starts logging for admin purposes
+def initialize_logger(output_dir):
+    logger = logging.getLogger()
+    logger.setLevel(logging.DEBUG)
+     
+    # create console handler and set level to info
+    handler = logging.StreamHandler()
+    handler.setLevel(logging.INFO)
+    formatter = logging.Formatter("%(levelname)s - %(message)s")
+    handler.setFormatter(formatter)
+    logger.addHandler(handler)
+ 
+    # create error file handler and set level to error
+    handler = logging.FileHandler(os.path.join(output_dir, "error.log"),"w", encoding=None, delay="true")
+    handler.setLevel(logging.ERROR)
+    formatter = logging.Formatter("%(levelname)s - %(message)s")
+    handler.setFormatter(formatter)
+    logger.addHandler(handler)
+ 
+    # create debug file handler and set level to debug
+    handler = logging.FileHandler(os.path.join(output_dir, "all.log"),"w")
+    handler.setLevel(logging.DEBUG)
+    formatter = logging.Formatter("%(levelname)s - %(message)s")
+    handler.setFormatter(formatter)
+    logger.addHandler(handler)
 
+#Creates window, sets up mouse, etc.
 def setup():
-    global win, mouse, rolledBefore, subjectNumber, datafile, writer, parallelPort, portValue, rolledFiftyFiftyBefore, trialNumber, birdAte
+    global win, mouse, rolledABefore, rolledBBefore, subjectNumber, datafile, writer, parallelPort, portValue, rolledFiftyFiftyBefore, trialNumber, birdAte
 
-    print("\nSetting up...")
+    logging.debug("Setting up...")
     
     #initialize the window
     win = visual.Window(fullscr = True, rgb = [-1.000,-1.000,-1.000], units = "pix", winType = "pyglet")
@@ -331,16 +354,16 @@ def setup():
 
     birdAte = False
 
-    rolledBefore = False
+    rolledABefore = False  
+    rolledBBefore = False
     rolledFFBefore = False
     rolledFiftyFiftyBefore = False
     trialNumber = 0
 
     dataFolderPath = os.getcwd() + "\SubOptimal_Data_Logs"
-    print (dataFolderPath)
+    logging.debug(dataFolderPath)
     if not os.path.exists(dataFolderPath):
       os.makedirs(dataFolderPath)
-
 
     filename = dataFolderPath + '/' + (time.strftime("%d_%m_%Y")) + '_' + (time.strftime("%H_%M")) + '_' + 'Subject_' + str(subjectNumber) + '_data.csv'
     datafile = open(filename, 'wb')
@@ -382,7 +405,7 @@ def createStimuli():
     global initA, initB, termLinkA, termLinkB, termLinkC, termLinkD
     global listOfBlanks
 
-    print("\nCreating stimuli...")
+    logging.debug("Creating stimuli...")
 
     listOfBlanks = []
 
@@ -423,7 +446,7 @@ def createStimuli():
 # based on contingency.
 def matchStimuli(contingency, reversal):
 
-    print("\nMatching Stimuli...")
+    logging.debug("Matching Stimuli...")
 
     if contingency == "1":
         choiceA.set_x(L_X)
@@ -564,7 +587,7 @@ def matchStimuli(contingency, reversal):
 
 # Makes a list of choice stimuli, returns the list
 def makeChoiceStimList():
-    print("Randomizing choice stimuli...")
+    logging.debug("Randomizing choice stimuli...")
 
     choiceList = []
 
@@ -599,7 +622,7 @@ def drawBlanksNoFlip(stimuli):
 
 # Draws each stimuli in "stimuli"
 def drawStims(stimuli):
-    print("Drawing stimuli...")
+    logging.debug("Drawing stimuli...")
 
     if len(stimuli) != len(listOfBlanks):
         drawBlanksNoFlip(listOfBlanks)
@@ -614,7 +637,7 @@ def drawStims(stimuli):
 # stimuli is reached.
 def waitForClicks(targetPeckRequired, stimuli, duration):
 
-    print("Waiting for clicks...")
+    logging.debug("Waiting for clicks...")
     peckNum = 0
     targetPeckNum = 0
     targetPecked = ""
@@ -637,10 +660,10 @@ def waitForClicks(targetPeckRequired, stimuli, duration):
           # Add click reaction times to list.
           reactionTimes.append(reactionTimer.getTime())
           pos = mouse.getPos()
-          print (pos)
+          logging.debug(pos)
 
           for i in range (0,len(stimuli)):
-            if stimuli[i].boundingBox.contains(pos):
+            if stimuli[i].getBoundingBox().contains(pos):
               targetPeckNum += 1
               if targetPeckNum >= targetPeckRequired:
                 targetFlag = True
@@ -653,7 +676,7 @@ def waitForClicks(targetPeckRequired, stimuli, duration):
       oldMouseIsDown = mouseIsDown
 
       if event.getKeys(["escape"]):
-        print("User pressed escape")
+        logging.debug("User pressed escape")
         exit()
 
 
@@ -664,29 +687,29 @@ def waitForClicks(targetPeckRequired, stimuli, duration):
 # When time is 0, loop will go infinitely
 # Every other value of time will start a counter for that length of time (in s)
 def waitForExitPress(time = 0):
-  print("Waiting for exit key to be pressed")
+  logging.debug("Waiting for exit key to be pressed")
   if time == 0:
     while True:
       if event.getKeys(["escape"]):
-            print("User pressed escape")
+            logging.debug("User pressed escape")
             exit()
   else:
     waitTimer = core.CountdownTimer(time) 
     while (waitTimer.getTime() > 0):
       if event.getKeys(["escape"]):
-            print("User pressed escape")
+            logging.debug("User pressed escape")
             exit()
 
 # Displays a blank screen and waits for the escape key
 def displayEndScreen():
-  print("Displaying end screen")
+  logging.debug("Displaying end screen")
   drawBlanksNoFlip(listOfBlanks)
   spacebarText = visual.TextStim(win, text='Experiment Ended. Press ESC to exit.', alignHoriz = 'center', alignVert = 'bottom')
   spacebarText.draw()
   win.flip()
   waitForExitPress()
   
-# Probabilities: 
+# Probabilities:
 # 1 = 100%
 # 0.5 = 50%
 # 0 = no reward
@@ -695,15 +718,13 @@ def giveReward(probability):
   hopperDropped = ""
   if apparatusPresent:
     if probability == 1:
-      print("Reward given with probability of: ", probability)
+      logging.debug("Reward given with probability of: ", probability)
       hopperDropped = dropHoppersAtRandom()
 
     elif probability == 0.5:
       if not rolledFiftyFiftyBefore:
-        fiftyFifty = [0,0,0,0,0,0,0,0,0,0,
-                      0,0,0,0,0,0,0,0,0,0,
-                      1,1,1,1,1,1,1,1,1,1,
-                      1,1,1,1,1,1,1,1,1,1]
+        fiftyFifty = [0,0,0,0,0,
+                      1,1,1,1,1]
 
         random.shuffle(fiftyFifty)
         rolledFiftyFiftyBefore = True
@@ -712,15 +733,15 @@ def giveReward(probability):
       fiftyFiftyIndex += 1
       if fiftyFifty[fiftyFiftyIndex] == 1:
         hopperDropped = dropHoppersAtRandom()
-        print("Reward given with probability of: ", probability)
+        logging.debug("Reward given with probability of: " + str(probability))
       else:
-        print("Reward not given")
+        logging.debug("Reward not given")
         probability = 0
         # In place of 1 second of hopper access
         core.wait(REWARD_TIME)
 
     else:
-      print("Reward not given")
+      logging.debug("Reward not given")
       # In place of 1 second of hopper access
       core.wait(REWARD_TIME)
 
@@ -758,32 +779,33 @@ def giveReward(probability):
         dropRightHopper()
  
   else:
-    print("Apparatus not present")
+    logging.debug("Apparatus not present")
 
     ## FIX: MAKE THIS CODE MORE CONDENSED.
     if probability == 1:
-      print("Reward given with probability of: ", probability)
+      logging.debug("Reward given with probability of: " + str(probability))
 
     elif probability == 0.5:
       if not rolledFiftyFiftyBefore:
-        fiftyFifty = [0,0,0,0,0,0,0,0,0,0,
-                      0,0,0,0,0,0,0,0,0,0,
-                      1,1,1,1,1,1,1,1,1,1,
-                      1,1,1,1,1,1,1,1,1,1]
+        fiftyFifty = [0,0,0,0,0,
+                      1,1,1,1,1]
 
         random.shuffle(fiftyFifty)
         rolledFiftyFiftyBefore = True
         fiftyFiftyIndex = -1
       
       fiftyFiftyIndex += 1
+      if fiftyFiftyIndex == (len(fiftyFifty) -1):
+        rolledFiftyFiftyBefore = False
+
       if fiftyFifty[fiftyFiftyIndex] == 1:
-        print("Reward given with probability of: ", probability)
+        logging.debug("Reward given with probability of: " + str(probability))
       else:
-        print("Reward not given")
+        logging.debug("Reward not given")
         probability = 0
 
     else:
-      print("Reward not given")
+      logging.debug("Reward not given")
       # In place of 1 second of hopper access
       core.wait(REWARD_TIME)
 
@@ -803,7 +825,7 @@ def dropHoppersAtRandom():
     raiseRightHopper()
     hopperDropped = "R"
 
-  print("Hopper dropped: ", hopperDropped)
+  logging.debug("Hopper dropped: " + str(hopperDropped))
   return hopperDropped
 
 # Raises the hopper and turns the light on.
@@ -865,7 +887,7 @@ def readLeftHopperBeam():
   #return if beam broken
 
   value = readPort.readPort(0x0201) & (0x20)
-  print("LEFT IR: ", value)
+  logging.debug("LEFT IR: " + str(value))
   return value
 
 # Reads from right IR beam. Called after hopper is dropped
@@ -873,16 +895,16 @@ def readRightHopperBeam():
   #return if beam broken
   
   value = readPort.readPort(0x0201) & (0x10)
-  print("RIGHT IR: ", value)
+  logging.debug("RIGHT IR: " + str(value))
   return value
 
 #Reads IR beam status on port 0x0201 (GamePort)
 def checkForApparatus():
   #return True if apparatus present, False otherwise
 
-  print("Checking for apparatus")
+  logging.debug("Checking for apparatus")
   value = readPort.readPort(0x0201)
-  print("Apparatus value ", value)
+  logging.debug("Apparatus value " + str(value))
   if value == 0x00ff:
     return True
   else:
@@ -890,7 +912,7 @@ def checkForApparatus():
 
 def waitForTermLinks():
 
-  print("Waiting for terminal clicks...")
+  logging.debug("Waiting for terminal clicks...")
   peckNum = 0
   oldMouseIsDown = True
 
@@ -909,14 +931,14 @@ def waitForTermLinks():
         reactionTimes.append(reactionTimer.getTime())
         reactionTimer.reset()
         pos = mouse.getPos()
-        print (pos)
+        logging.debug(pos)
 
         peckNum += 1
      
     oldMouseIsDown = mouseIsDown
 
     if event.getKeys(["escape"]):
-      print("User pressed escape")
+      logging.debug("User pressed escape")
       exit()
 
   return peckNum, reactionTimes
@@ -924,7 +946,7 @@ def waitForTermLinks():
 
 # Main experimental phase. Reversal changes chance of reinforcement.
 def doExperimentalPhase():
-    print("Starting experimental phase...")
+    logging.debug("Starting experimental phase...")
     global birdAte
 
     createStimuli()
@@ -935,6 +957,9 @@ def doExperimentalPhase():
     expTimer = core.CountdownTimer(EXPERIMENT_TIME)
 
     trialNumber = 0
+
+    print("StimList Len: " + str(len(stimList)))
+    logging.debug("StimList Length " +  str(len(stimList)))
 
     for i in range(0,len(stimList)):
         choicePeckNum = 0
@@ -962,7 +987,7 @@ def doExperimentalPhase():
           
         cStimSide = ""
         iStimSide = ""
-        if cPeckNum == True:
+        if cClickFlag == True:
           if cStimPecked.get_x() == L_X:
             cStimSide = "LEFT"
           elif cStimPecked.get_x() == R_X:
@@ -972,7 +997,7 @@ def doExperimentalPhase():
         else:
           cStimSide = "NO STIM PECKED"
 
-        if iPeckNum == True:
+        if cClickFlag == True:
           if iStimPecked.get_x() == L_X:
             iStimSide = "LEFT"
           elif iStimPecked.get_x() == R_X:
@@ -995,6 +1020,10 @@ def doExperimentalPhase():
 
         if len(tReactionTimes) == 0:
           tReactionTimes.append("")
+          sumReactionTimes = ""
+        else:
+          sumReactionTimes = sum(tReactionTimes)
+
         tPeckLog = ""
         for m in range(0, len(tReactionTimes)):
           if m == 0:
@@ -1017,6 +1046,7 @@ def doExperimentalPhase():
             iReactTimeStr = iReactTimeStr + ", " + str(iReactionTimes[l])
 
 
+        logging.debug(str(expTimer.getTime()))
         writer.writerow([researchAssistant, subjectNumber, setNumber,
                       sessionNumber, dateStarted + " " + timeStarted, contingency,
                       condition, "1", programName, trialNumber,
@@ -1026,12 +1056,13 @@ def doExperimentalPhase():
                       iStimPresented, termStimShown.name, termStimShown.get_fill(),
                       cStimSide, iStimSide,
                       cStimPecked.name, cReactTimeStr, iReactTimeStr, tPeckLog,
-                      tReactionTimes[0], tReactionTimes[(len(tReactionTimes)-1)], TERM_DUR,
+                      tReactionTimes[0], sumReactionTimes, TERM_DUR,
                       ITI, cPeckNum, iPeckNum, tPeckNum, subOptChosen, birdAte])
 
         waitForExitPress(ITI)
 
     endTime = time.strftime("%H:%M")
+    logging.debug(str(endTime))
 
     writer.writerow([researchAssistant, subjectNumber, setNumber,
                       sessionNumber, dateStarted + " " + timeStarted, contingency,
@@ -1045,14 +1076,14 @@ def doExperimentalPhase():
                       "", "", TERM_DUR,
                       ITI, "", "", "", "", ""])
 
-    while (expTimer.getTime() > 0):
-      drawStims(listOfBlanks)
+    drawStims(listOfBlanks)
+    waitForExitPress(expTimer.getTime())
 
     displayEndScreen()
 
 # Generates a list of initial link stimuli choices
 def makeInitStimList():
-    print("Randomizing init stimuli...")
+    logging.debug("Randomizing init stimuli...")
 
     initList = []
 
@@ -1072,7 +1103,6 @@ def makeInitStimList():
     return initList
 
 # Stimulus pairing phase.
-
 def doStimPairing():
     global birdAte
 
@@ -1123,6 +1153,9 @@ def doStimPairing():
 
           if len(tReactionTimes) == 0:
             tReactionTimes.append("")
+            sumReactionTimes = ""
+          else:
+            sumReactionTimes = sum(tReactionTimes)
           tPeckLog = ""
 
           for m in range(0, len(tReactionTimes)):
@@ -1147,7 +1180,7 @@ def doStimPairing():
                         stimPresented, termStimPresented, termStimShown.get_fill(),
                         "", iStimSide,
                         "", "", iReactTimeStr, tPeckLog,
-                        tReactionTimes[0], tReactionTimes[(len(tReactionTimes)-1)], TERM_DUR,
+                        tReactionTimes[0], sumReactionTimes, TERM_DUR,
                         ITI, "", iPeckNum, tPeckNum, subOptChosen, birdAte])
 
           waitForExitPress(ITI)
@@ -1166,8 +1199,8 @@ def doStimPairing():
                       "", "", TERM_DUR,
                       ITI, "", "", "", "", ""])
 
-    while (expTimer.getTime() > 0):
-      drawStims(listOfBlanks)
+    drawStims(listOfBlanks)
+    waitForExitPress(expTimer.getTime())
 
     displayEndScreen()
 
@@ -1249,7 +1282,7 @@ def doTraining(ITI, pecksToReward, rewardIfNotPecked):
             break
 
       drawStims(stimList[i])
-      print("stimdur: ", stimDur)
+      logging.debug("stimdur: " + str(stimDur))
       stimPecked, clickFlag, peckNum, reactionTimes = waitForClicks(pecksToReward, stimList[i], stimDur)
 
       if rewardIfNotPecked or clickFlag:
@@ -1258,7 +1291,6 @@ def doTraining(ITI, pecksToReward, rewardIfNotPecked):
       drawStims(listOfBlanks) #Display blank stimuli for duration of ITI
 
       if clickFlag == True:
-        print ("STIM POS: ", )
         if stimPecked.get_x() == L_X:
           stimSide = "LEFT"
         elif stimPecked.get_x() == R_X:
@@ -1293,7 +1325,7 @@ def doTraining(ITI, pecksToReward, rewardIfNotPecked):
       waitForExitPress(ITI)
 
       if event.getKeys(keyList=["escape"]):
-          print("User pressed escape")
+          logging.debug("User pressed escape")
           exit()
 
   endTime = time.strftime("%H:%M")
@@ -1330,19 +1362,21 @@ def getUserInput():
         experimentParameters = myDlg.data
         print experimentParameters
     else: # User pressed "Cancel"
-        print 'user cancelled'
+        logging.debug('user cancelled')
         experimentParameters = []
         userCancelled = True
 
     return experimentParameters, userCancelled
 
+#Waits for spacebar input from user for indefinite period of time
 def waitForSpacebar():
 
   while True:
     if event.getKeys(["space"]):
-      print("User pressed spacebar")
+      logging.debug("User pressed spacebar")
       break
 
+#Timer function which only allows the experiment to be run at a certain time
 def waitForExperiment():
   bibTextContent = "Bird in Box --- Waiting until " + str(EXPERIMENT_START_TIME[0]) + ":" + str(EXPERIMENT_START_TIME[1])
   bibText =visual.TextStim(win, text=bibTextContent, pos=(0.0, 500), alignVert = "top")
@@ -1357,18 +1391,28 @@ def waitForExperiment():
     elif (time.localtime()[3] > EXPERIMENT_START_TIME[0]):
       break
     if event.getKeys(["escape"]):
-        print("User pressed escape")
+        logging.debug("User pressed escape")
         exit()
 
 
 # Turns all inputs into global variables, sets up experiment, and decides
 # which experimental phase to call.
 def main():
-    global ITI, contingency, reversal, subjectNumber, apparatusPresent
+    global ITI, contingency, reversal, subjectNumber, apparatusPresent, TERM_DUR
     global subjectNumber, sessionNumber, condition, contingency
     global stimulusTimeout, testRunFlag, researchAssistant
     global dateStarted, timeStarted, programStartTime, birdInBoxTime
     global programLoadTime, setNumber, programName, experimentStartTime, stimDur
+ 
+    initialize_logger('./')
+     
+    logging.debug("debug message")
+    logging.info("info message")
+    logging.warning("warning message")
+    logging.error("error message")
+    logging.critical("critical message")
+
+    logging.info('\n\n\n' + (time.strftime("%d_%m_%Y @ ")) + (time.strftime("%H:%M")) + ':\n\n')
 
     userResponses, userCancelled = getUserInput()
 
@@ -1401,14 +1445,19 @@ def main():
     try: 
       setup()
     except:
-      print("Setup error")
-      raise
+      e = sys.exc_info()[0]
+      
+      if type(e) != type(SystemExit):
+        logging.exception(e)
+        raise
 
     if testRunFlag == "Yes":
-      ITI = 5
+      ITI = 2
+      TERM_DUR = 2
       mouse.setVisible(1)
     else:
       ITI = 10
+      TERM_DUR = 10
       mouse.setVisible(0)
 
     try:
@@ -1423,8 +1472,11 @@ def main():
 
       birdInBoxTime = time.strftime("%H:%M")
     except:
-      print("Wait screen error")
-      raise
+      e = sys.exc_info()[0]
+      
+      if type(e) != type(SystemExit):
+        logging.exception(e)
+        raise
 
     try:
       experimentStartTime = time.strftime("%H:%M")
@@ -1459,7 +1511,7 @@ def main():
           doExperimentalPhase()
       experimentEndTime = time.strftime("%H:%M")
     except:
-      print("Experiment error")
+      e = sys.exc_info()[0]
       endTime = time.strftime("%H:%M")
 
       writer.writerow(["", "", "",
@@ -1469,9 +1521,12 @@ def main():
                         endTime])
       writer.writerow([])
       datafile.close()
-      raise
+
+      if type(e) != type(SystemExit):
+        logging.exception(e)
+        raise
     else:
-      print("Experiment finished cleanly")
+      logging.debug("Experiment finished cleanly")
       datafile.close()
 
 
